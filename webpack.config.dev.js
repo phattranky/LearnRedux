@@ -20,7 +20,7 @@ module.exports = {
     loaders: [
     // js
     {
-      test: /\.js$/,
+      test: /(\.jsx?)$/,
       loaders: ['babel'],
       include: path.join(__dirname, 'client')
     },
@@ -31,5 +31,8 @@ module.exports = {
       loader: 'style-loader!css-loader!stylus-loader'
     }
     ]
+  },
+  resolve: {
+    extensions: ['', '.js', '.jsx'],
   }
 };

@@ -12,6 +12,11 @@ const Main = React.createClass({
             Redux
           </Link>
         </h1>
+        <div className="menu">
+          <Link to="/arealinechart">
+            Area Line Chart
+          </Link>
+        </div>
         {React.cloneElement(this.props.children, this.props)}
       </div>
     )
