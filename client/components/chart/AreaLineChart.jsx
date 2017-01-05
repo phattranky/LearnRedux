@@ -1,9 +1,7 @@
 import React, { Component, PropTypes } from 'react';
 import * as d3 from 'd3';
 import moment from 'moment';
-import { random, cloneDeep, forEach } from 'lodash';
 
-import Data from '../../data/dualChartData';
 import Chart from './Chart';
 import Axis from './Axis';
 import Line  from './Line';
@@ -11,39 +9,69 @@ import Line  from './Line';
 class AreaLineChart extends Component {
 
   static propTypes = {
+    data: PropTypes.array,
     width: PropTypes.number,
-    height: PropTypes.number
+    height: PropTypes.number,
+    responsive: PropTypes.bool,
+    className: PropTypes.string
   }
 
   static defaultProps = {
-    data: Data,
+    data: [],
     width: 500,
     height: 300,
     padding: {top: 30, right: 30, bottom: 30, left: 30},
-    dataMapping: {
-      xAxisData: {
-        data: [],
-        type: 'date',
-        format: 'YYYY',
-        displayFormat: 'YYYY'
-      },
-      leftYAxisData: '',
-      rightYAxisData: ''
-    }
+    responsive: false,
+    className: ''
   }
 
   state = {
-    data: Data
+    width: this.props.width,
+    height: this.props.height
+  }
+
+  componentDidMount() {
+    if (this.props.responsive) {
+      this.enableResize();
+    }
+  }
+
+  componentWillUnmount() {
+    this.disableResize();
+  }
+
+  onResize = () => {
+    const { padding } = this.props;
+    const { clientWidth, clientHeight } = this.refs.wrapper;
+    this.setState({
+      width: clientWidth - padding.left - padding.right
+    });
+  }
+
+  disableResize() {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('resize', this.onResize)
+    }
+  }
+
+  enableResize() {
+    const { padding } = this.props;
+    const { clientWidth, clientHeight } = this.refs.wrapper;
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', this.onResize, false)
+      this.setState({
+        width: clientWidth - padding.left - padding.right
+      });
+    }
   }
 
   chartData() {
-    const { padding, width, height } = this.props;
-    const { data } = this.state;
+    const { padding, data } = this.props;
+    const { width, height } = this.state;
     const chartWidth = width + padding.left + padding.right;
     const chartHeight = height + padding.top + padding.bottom;
 
     const xScale = d3.scaleTime().range([1, chartWidth - padding.left - padding.right]);
-    // xScale.domain([moment(data[0].year, 'YYYY'), moment(data[data.length - 1].year, 'YYYY')]);
     xScale.domain(d3.extent(data, (d) => moment(d.year, 'YYYY')));
 
     const maxMoneyTotal = d3.max(data, (d) => (d.money));
@@ -76,28 +104,15 @@ class AreaLineChart extends Component {
       xScale,
       yScale,
       yRightScale,
-      padding,
       line,
       area,
       linePoints
     };
   }
 
-  updateData = () => {
-    console.log('update data');
-    const newData = cloneDeep(this.state.data);
-    forEach(newData, (item) => {
-      item.money = random(20, 500);
-    });
-    console.log(newData);
-    this.setState({
-      data: newData
-    });
-  }
-
   render() {
-    const { width, height, yScale, xScale, yRightScale, padding, line, area, linePoints } = this.chartData();
-    const { data } = this.state;
+    const { width, height, yScale, xScale, yRightScale, line, area, linePoints } = this.chartData();
+    const { padding, data, className } = this.props;
     const bottomAxisPosition = {
       top: 0,
       left: 0,
@@ -112,15 +127,12 @@ class AreaLineChart extends Component {
       bottom: 0
     };
 
-
+    if (!data || !data.length) {
+      return null;
+    }
 
     return (
-      <div>
-        <div>
-          <button onClick={this.updateData}>
-            Update Data
-          </button>
-        </div>
+      <div ref="wrapper" className={className}>
         <Chart width={width} height={height} padding={padding}>
           <filter id="dropshadow" height="130%" width="110%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>

@@ -7,7 +7,6 @@ class Axis extends Component {
   static propTypes = {
     width: PropTypes.number,
     height: PropTypes.number,
-    onLoad: PropTypes.func,
     orient: PropTypes.oneOf(['left', 'top', 'right', 'bottom']),
     className: PropTypes.string,
     scale: PropTypes.func.isRequired,
@@ -21,7 +20,6 @@ class Axis extends Component {
   static defaultProps = {
     width: 0,
     height: 0,
-    onLoad: null,
     orient: 'left',
     className: '',
     ticks: null,
@@ -39,7 +37,7 @@ class Axis extends Component {
   }
 
   renderAxis() {
-    const { onLoad, className, orient, scale, ticks, 
+    const { className, orient, scale, ticks, 
       tickFormat, tickPadding, duration, textRotate } = this.props;
     let axis = d3.axisLeft(scale);
     switch(orient) {
@@ -71,10 +69,6 @@ class Axis extends Component {
       .transition()
       .duration(duration)
       .call(axis);
-
-    if (onLoad) {
-      onLoad(axisNode);
-    }
   }
 
   render() {
