@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from 'react';
 import * as d3 from 'd3';
+import { forEach } from 'lodash';
 
 class Line extends Component {
 
@@ -8,7 +9,10 @@ class Line extends Component {
     areaPath: PropTypes.string,
     className: PropTypes.string,
     duration: PropTypes.number,
-    filterUrl: PropTypes.string
+    filterUrl: PropTypes.string,
+    points: PropTypes.array,
+    pointRad: PropTypes.number,
+    pointMouseEnter: PropTypes.func
   }
 
   static defaultProps = {
@@ -16,12 +20,15 @@ class Line extends Component {
     areaPath: '',
     className: '',
     duration: 0,
-    filterUrl: ''
+    filterUrl: '',
+    points: [],
+    pointRad: 3.5,
+    pointMouseEnter: null
   }
 
   componentDidUpdate() {
-    this.renderPath();
-    this.renderDot();
+    this.renderPath(true);
+    this.renderDot(true);
   }
 
   componentDidMount() {
@@ -29,42 +36,38 @@ class Line extends Component {
     this.renderDot();
   }
 
-  convertPathToDot(path) {
-    const commands = path.split(/(?=[LMC])/);
-    return commands.map(function(d){
-      var pointsArray = d.slice(1, d.length).split(',');
-      var pairsArray = [];
-      for(var i = 0; i < pointsArray.length; i += 2) {
-        pairsArray.push([+pointsArray[i], +pointsArray[i+1]]);
-      }
-      return pairsArray;
-    });
-  }
-
-  renderDot() {
-    const { path, areaPath } = this.props;
-    let dotArr = [];
-    if (path && path.length) {
-      dotArr = this.convertPathToDot(path);
-    } else {
-      dotArr = this.convertPathToDot(areaPath);
+  pointEnter(point) {
+    if (this.props.pointMouseEnter) {
+      this.props.pointMouseEnter(point);
     }
-    console.log('dotArr', dotArr);
   }
 
-  renderPath() {
+  renderPath(didUpdate) {
     d3.select(this.refs.linePath)
       .transition()
-      .duration(this.props.duration)
+      .duration(didUpdate ? this.props.duration : 0)
       .attr('d', this.props.path);
     d3.select(this.refs.areaPath)
       .transition()
-      .duration(this.props.duration)
+      .duration(didUpdate ? this.props.duration : 0)
       .attr('d', this.props.areaPath);
   }
 
+  renderDot(didUpdate) {
+    const { points, duration, pointRad } = this.props;
+    const dotNodes = d3.select(this.refs.dotGroup).selectAll('circle.plot').nodes();
+    forEach(dotNodes, (dot, index) => {
+      d3.select(dot)
+        .transition()
+        .duration(didUpdate ? duration : 0)
+        .attr('r', pointRad)
+        .attr('cx', points[index].x)
+        .attr('cy', points[index].y);
+    })
+  }
+
   render() {
-    const { path, areaPath, className, filterUrl } = this.props;
+    const { path, areaPath, className, filterUrl, points } = this.props;
     const areaPathStyle = {};
     if (filterUrl.length) {
       areaPathStyle.filter = `url(${filterUrl})`;
@@ -89,6 +92,16 @@ class Line extends Component {
           : null
         }
         <g ref="dotGroup">
+          {
+            points.map((point, index) => 
+              <circle
+                key={index}
+                className="plot"
+                onMouseEnter={() => this.pointEnter(point)}
+              >
+              </circle>
+            )
+          }
         </g>
       </g>
     );

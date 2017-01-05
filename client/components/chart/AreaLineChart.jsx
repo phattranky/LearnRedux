@@ -62,7 +62,13 @@ class AreaLineChart extends Component {
                   .curve(d3.curveCardinal)
                   .x((d) => xScale(moment(d.year, 'YYYY')))
                   .y0(chartHeight - padding.bottom - padding.top)
-                  .y1((d) => yScale(d.money));                
+                  .y1((d) => yScale(d.money));
+
+    const linePoints = data.map((item) => ({
+      x: xScale(moment(item.year, 'YYYY')), 
+      y: yScale(item.money),
+      data: item
+    }));
 
     return {
       width: chartWidth,
@@ -72,7 +78,8 @@ class AreaLineChart extends Component {
       yRightScale,
       padding,
       line,
-      area
+      area,
+      linePoints
     };
   }
 
@@ -89,7 +96,7 @@ class AreaLineChart extends Component {
   }
 
   render() {
-    const { width, height, yScale, xScale, yRightScale, padding, line, area } = this.chartData();
+    const { width, height, yScale, xScale, yRightScale, padding, line, area, linePoints } = this.chartData();
     const { data } = this.state;
     const bottomAxisPosition = {
       top: 0,
@@ -109,9 +116,11 @@ class AreaLineChart extends Component {
 
     return (
       <div>
-        <button onClick={this.updateData}>
-          Update Data
-        </button>
+        <div>
+          <button onClick={this.updateData}>
+            Update Data
+          </button>
+        </div>
         <Chart width={width} height={height} padding={padding}>
           <filter id="dropshadow" height="130%" width="110%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
@@ -121,7 +130,7 @@ class AreaLineChart extends Component {
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
-          <Axis orient='left' scale={yScale} />
+          <Axis orient='left' scale={yScale} duration={500} />
           <Axis orient='right' scale={yRightScale} position={rightAxisPosition} />
           <Axis
             orient='bottom'
@@ -131,6 +140,7 @@ class AreaLineChart extends Component {
             ticks={0}
           />
           <Line
+            points={linePoints}
             path={line(data)}
             areaPath={area(data)}
             duration={500}
