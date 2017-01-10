@@ -9,7 +9,14 @@ import Line  from './Line';
 class AreaLineChart extends Component {
 
   static propTypes = {
-    data: PropTypes.array,
+    labels: PropTypes.array,
+    xScaleType: PropTypes.oneOf(['time', 'band']),
+    xAxisProp: PropTypes.string,
+    xAxisFormat: PropTypes.string,
+    xAxisDisplayFormat: PropTypes.string,
+    yLeftAxisLabelProp: PropTypes.string,
+    yRightAxisLabelProp: PropTypes.string,
+    data: PropTypes.object,
     width: PropTypes.number,
     height: PropTypes.number,
     responsive: PropTypes.bool,
@@ -17,7 +24,14 @@ class AreaLineChart extends Component {
   }
 
   static defaultProps = {
-    data: [],
+    labels: [],
+    xScaleType: 'time',
+    xAxisProp: '',
+    xAxisFormat: '',
+    xAxisDisplayFormat: '',
+    yLeftAxisLabelProp: '',
+    yRightAxisLabelProp: '',
+    data: {},
     width: 500,
     height: 300,
     padding: {top: 30, right: 30, bottom: 30, left: 30},
@@ -28,6 +42,11 @@ class AreaLineChart extends Component {
   state = {
     width: this.props.width,
     height: this.props.height
+  }
+
+  scaleTypes = {
+    TIME: 'time',
+    BAND: 'band'
   }
 
   componentDidMount() {
@@ -65,53 +84,107 @@ class AreaLineChart extends Component {
     }
   }
 
+  getChartWidth = () => {
+    const { width } = this.state;
+    const { padding } = this.props;
+    return width + padding.left + padding.right;
+  }
+
+  getChartHeight = () => {
+    const { height } = this.state;
+    const { padding } = this.props;
+    return height + padding.top + padding.bottom;
+  }
+
+  getXScale = () => {
+    const { labels, xScaleType, xAxisProp, xAxisFormat, data } = this.props;
+    const { width: xaxisWidth } = this.state;
+    const actualLabels = labels.length ? labels : Object.keys(data);
+    const xAxisColumns = {};
+    for (const item of actualLabels) {
+      const curItem = data[item];
+      for (let i = 0; i < curItem.length; i++) {
+        xAxisColumns[curItem[i][xAxisProp]] = '';
+      }
+    }
+    const xAxisColumnsInArray = Object.keys(xAxisColumns);
+    let xScale;
+    if (xScaleType === this.scaleTypes.TIME) {
+      xScale = d3.scaleTime().range([1, xaxisWidth]);
+      xScale.domain(d3.extent(xAxisColumnsInArray, (d) => moment(d, xAxisFormat)));
+    }
+    if (xScaleType === this.scaleTypes.BAND) {
+      // WILL BE IMPLEMENT LATER
+    }
+
+    return xScale;
+  }
+
+  getYScale(labels, data, yProp, axisHeight) {
+    const maxOfEachLabels = [];
+    const actualLabels = labels.length ? labels : Object.keys(data);
+    for (const item of actualLabels) {
+      maxOfEachLabels.push(d3.max(data[item], (d) => d[yProp]));
+    }
+    const max = d3.max(maxOfEachLabels);
+    const yScale = d3.scaleLinear().range([axisHeight, 0]);
+    yScale.domain([0, max]);
+    
+    return yScale;
+  }
+
   chartData() {
-    const { padding, data } = this.props;
+    const { padding, data, xScaleType, xAxisProp, yLeftAxisLabelProp, yRightAxisLabelProp, labels, xAxisFormat } = this.props;
     const { width, height } = this.state;
-    const chartWidth = width + padding.left + padding.right;
-    const chartHeight = height + padding.top + padding.bottom;
 
-    const xScale = d3.scaleTime().range([1, chartWidth - padding.left - padding.right]);
-    xScale.domain(d3.extent(data, (d) => moment(d.year, 'YYYY')));
-
-    const maxMoneyTotal = d3.max(data, (d) => (d.money));
-    const yScale = d3.scaleLinear().range([chartHeight - padding.top - padding.bottom, 0]);
-    yScale.domain([0, maxMoneyTotal]);
-
-    const maxNumberTotal = d3.max(data, (d) => (d.number));
-    const yRightScale = d3.scaleLinear().range([chartHeight - padding.top - padding.bottom, 0]);
-    yRightScale.domain([0, maxNumberTotal]);
+    const xScale = this.getXScale();
+    const yScale = this.getYScale(labels, data, yLeftAxisLabelProp, height);
+    const yRightScale = this.getYScale(labels, data, yRightAxisLabelProp, height);
+    const drawData = [];
+    const actualLabels = labels.length ? labels : Object.keys(data);
+    for (const label of actualLabels) {
+      const item = data[label];
+      // const linePoints = item.map((item) => ({
+      //   x: xScale(xScaleType === this.scaleTypes.TIME ? moment(item[yLeftAxisLabelProp], xAxisFormat)
+      //     : item[yLeftAxisLabelProp]), 
+      //   y: yScale(item[yLeftAxisLabelProp]),
+      //   data: item
+      // }));
+      drawData.push({
+        label,
+        linePoints: [],
+        data: item
+      });
+    }
 
     const line = d3.line()
-                  .curve(d3.curveCardinal)
-                  .x((d) => xScale(moment(d.year, 'YYYY')))
-                  .y((d) => yScale(d.money));
+                  .x((d) => {
+                    const dData = xScaleType === this.scaleTypes.TIME ? moment(d[xAxisProp], xAxisFormat)
+          : d[xAxisProp];
+                    return xScale(dData);
+                  })
+                  .y((d) => yRightScale(d[yRightAxisLabelProp]));
     const area = d3.area()
                   .curve(d3.curveCardinal)
-                  .x((d) => xScale(moment(d.year, 'YYYY')))
-                  .y0(chartHeight - padding.bottom - padding.top)
-                  .y1((d) => yScale(d.money));
-
-    const linePoints = data.map((item) => ({
-      x: xScale(moment(item.year, 'YYYY')), 
-      y: yScale(item.money),
-      data: item
-    }));
+                  .x((d) => xScale(xScaleType === this.scaleTypes.TIME ? moment(d[xAxisProp], xAxisFormat)
+          : d[xAxisProp]))
+                  .y0(height)
+                  .y1((d) => yScale(d[yLeftAxisLabelProp]));
 
     return {
-      width: chartWidth,
-      height: chartHeight,
+      width: this.getChartWidth(),
+      height: this.getChartHeight(),
       xScale,
       yScale,
       yRightScale,
       line,
       area,
-      linePoints
+      drawData
     };
   }
 
   render() {
-    const { width, height, yScale, xScale, yRightScale, line, area, linePoints } = this.chartData();
+    const { width, height, yScale, xScale, yRightScale, line, area, linePoints, drawData } = this.chartData();
     const { padding, data, className } = this.props;
     const bottomAxisPosition = {
       top: 0,
@@ -126,10 +199,6 @@ class AreaLineChart extends Component {
       right: padding.right + padding.left,
       bottom: 0
     };
-
-    if (!data || !data.length) {
-      return null;
-    }
 
     return (
       <div ref="wrapper" className={className}>
@@ -151,13 +220,28 @@ class AreaLineChart extends Component {
             tickPadding={5}
             ticks={0}
           />
-          <Line
-            points={linePoints}
-            path={line(data)}
-            areaPath={area(data)}
-            duration={500}
-            filterUrl="#dropshadow"
-          />
+          {
+            drawData.map((item) => {
+              return <Line
+                key={item.label}
+                points={item.linePoints}
+                areaPath={area(item.data)}
+                duration={500}
+                filterUrl="#dropshadow"
+              />
+            })
+          }
+          {
+            drawData.map((item) => {
+              return <Line
+                key={item.label}
+                points={item.linePoints}
+                path={line(item.data)}
+                duration={500}
+                filterUrl="#dropshadow"
+              />
+            })
+          }
         </Chart>
       </div>
     )

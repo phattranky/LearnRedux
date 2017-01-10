@@ -75,19 +75,19 @@ class Line extends Component {
     return (
       <g className={`line ${className}`}>
         {
-          (path && path.length && (!areaPath || !areaPath.length)) ?
-          <path
-            ref="linePath"
-            className="line-path"
-          />
-          : null
-        }
-        {
           areaPath && areaPath.length ?
           <path
             style={areaPathStyle}
             ref="areaPath"
             className="area-path"
+          />
+          : null
+        }
+        {
+          path && path.length ?
+          <path
+            ref="linePath"
+            className="line-path"
           />
           : null
         }

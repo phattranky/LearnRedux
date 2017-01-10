@@ -1,38 +1,43 @@
 import React, { Component, PropTypes } from 'react';
 import { random, cloneDeep, forEach } from 'lodash';
 
-import Data from '../data/dualChartData';
+import dataset, { labels as dataLabels } from '../data/dualChartData';
 import AreaLineChart from './chart/AreaLineChart';
 
 class ChartContainer extends Component {
 
   state = {
-    data: Data,
+    data: dataset,
     width: 500,
     height: 300
   }
 
-  updateData = () => {
-    const newData = cloneDeep(this.state.data);
-    forEach(newData, (item) => {
-      item.money = random(20, 500);
-    });
-    this.setState({
-      data: newData
-    });
-  }
+  // updateData = () => {
+  //   const newData = cloneDeep(this.state.data);
+  //   forEach(newData, (item) => {
+  //     item.money = random(20, 500);
+  //   });
+  //   this.setState({
+  //     data: newData
+  //   });
+  // }
 
   render() {
-    const { data, width, height, showChart2 } = this.state;
+    const { width, height, showChart2 } = this.state;
     return (
       <div>
         <div>
-          <button onClick={this.updateData}>
+          <button>
             Update Data
           </button>
         </div>
-        <AreaLineChart 
-          data={data}
+        <AreaLineChart
+          labels={dataLabels}
+          xAxisFormat="YYYY"
+          xAxisProp="year"
+          yLeftAxisLabelProp='money'
+          yRightAxisLabelProp='number'
+          data={dataset}
           width={width}
           height={height}
           responsive={true}
