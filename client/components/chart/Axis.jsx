@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from 'react';
 import * as d3 from 'd3';
-import { forEach } from 'lodash';
+import { forEach, isEqual } from 'lodash';
 
 class Axis extends Component {
 
@@ -26,6 +26,10 @@ class Axis extends Component {
     position: {top: 0, right: 0, bottom: 0, left: 0},
     tickPadding: 0,
     duration: 0
+  }
+
+  shouldComponentUpdate(nextProps) {
+    return !isEqual(this.props, nextProps);
   }
 
   componentDidMount() {

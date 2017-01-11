@@ -5,6 +5,7 @@ import moment from 'moment';
 import Chart from './Chart';
 import Axis from './Axis';
 import Line  from './Line';
+import Tooltip from './Tooltip';
 
 class AreaLineChart extends Component {
 
@@ -41,7 +42,9 @@ class AreaLineChart extends Component {
 
   state = {
     width: this.props.width,
-    height: this.props.height
+    height: this.props.height,
+    tooltipMousePos: [0, 0],
+    tooltipDisplay: false
   }
 
   scaleTypes = {
@@ -114,7 +117,8 @@ class AreaLineChart extends Component {
       xScale.domain(d3.extent(xAxisColumnsInArray, (d) => moment(d, xAxisFormat)));
     }
     if (xScaleType === this.scaleTypes.BAND) {
-      // WILL BE IMPLEMENT LATER
+      xScale = d3.scaleBand().range([1, xaxisWidth])
+      xScale.domain(xAxisColumnsInArray);
     }
 
     return xScale;
@@ -144,15 +148,15 @@ class AreaLineChart extends Component {
     const actualLabels = labels.length ? labels : Object.keys(data);
     for (const label of actualLabels) {
       const item = data[label];
-      // const linePoints = item.map((item) => ({
-      //   x: xScale(xScaleType === this.scaleTypes.TIME ? moment(item[yLeftAxisLabelProp], xAxisFormat)
-      //     : item[yLeftAxisLabelProp]), 
-      //   y: yScale(item[yLeftAxisLabelProp]),
-      //   data: item
-      // }));
+      const rightLinePoints = item.map((item) => ({
+        x: xScale(xScaleType === this.scaleTypes.TIME ? moment(item[xAxisProp], xAxisFormat)
+          : item[xAxisProp]), 
+        y: yRightScale(item[yRightAxisLabelProp]),
+        data: item
+      }));
       drawData.push({
         label,
-        linePoints: [],
+        rightLinePoints,
         data: item
       });
     }
@@ -183,9 +187,23 @@ class AreaLineChart extends Component {
     };
   }
 
+  rightAxisPointMouseEnter = (point) => {
+    this.setState({
+      tooltipDisplay: true,
+      tooltipMousePos: [point.x, point.y]
+    });
+  }
+
+  rightAxisPointMouseOut = (point) => {
+    this.setState({
+      tooltipDisplay: false
+    });
+  }
+
   render() {
     const { width, height, yScale, xScale, yRightScale, line, area, linePoints, drawData } = this.chartData();
     const { padding, data, className } = this.props;
+    const { tooltipMousePos, tooltipDisplay } = this.state;
     const bottomAxisPosition = {
       top: 0,
       left: 0,
@@ -212,37 +230,56 @@ class AreaLineChart extends Component {
             </feMerge>
           </filter>
           <Axis orient='left' scale={yScale} duration={500} />
-          <Axis orient='right' scale={yRightScale} position={rightAxisPosition} />
+          <Axis orient='right' scale={yRightScale} position={rightAxisPosition} duration={500} />
           <Axis
             orient='bottom'
             scale={xScale}
             position={bottomAxisPosition}
             tickPadding={5}
             ticks={0}
+            duration={500}
           />
           {
-            drawData.map((item) => {
+            drawData.map((item, index) => {
               return <Line
                 key={item.label}
-                points={item.linePoints}
                 areaPath={area(item.data)}
                 duration={500}
                 filterUrl="#dropshadow"
+                className={`line-${index}`}
               />
             })
           }
           {
-            drawData.map((item) => {
+            drawData.map((item, index) => {
               return <Line
                 key={item.label}
-                points={item.linePoints}
+                points={item.rightLinePoints}
                 path={line(item.data)}
                 duration={500}
                 filterUrl="#dropshadow"
+                className={`line-${index}`}
+                pointMouseEnter={this.rightAxisPointMouseEnter}
+                pointMouseOut={this.rightAxisPointMouseOut}
               />
             })
           }
         </Chart>
+        <Tooltip
+          position='right'
+          mousePos={tooltipMousePos}
+          mouseWrapper={{
+            width,
+            height
+          }}
+          mousePadding={{
+            top: -25,
+            right: -30
+          }}
+          visible={tooltipDisplay}
+        >
+          HelloWorld
+        </Tooltip>
       </div>
     )
   }

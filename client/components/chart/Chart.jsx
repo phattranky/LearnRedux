@@ -10,7 +10,7 @@ class Chart extends Component {
     padding: {top: 0, right: 0, bottom: 0, left: 0}
   }
 
-  static defaultTypes = {
+  static propTypes = {
     id: PropTypes.string,
     className: PropTypes.string,
     width: PropTypes.number.isRequired,

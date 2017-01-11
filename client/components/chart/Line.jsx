@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from 'react';
 import * as d3 from 'd3';
-import { forEach } from 'lodash';
+import { forEach, isEqual } from 'lodash';
 
 class Line extends Component {
 
@@ -12,7 +12,8 @@ class Line extends Component {
     filterUrl: PropTypes.string,
     points: PropTypes.array,
     pointRad: PropTypes.number,
-    pointMouseEnter: PropTypes.func
+    pointMouseEnter: PropTypes.func,
+    pointMouseOut: PropTypes.func
   }
 
   static defaultProps = {
@@ -23,7 +24,12 @@ class Line extends Component {
     filterUrl: '',
     points: [],
     pointRad: 3.5,
-    pointMouseEnter: null
+    pointMouseEnter: null,
+    pointMouseOut: null
+  }
+
+  shouldComponentUpdate(nextProps) {
+    return !isEqual(this.props, nextProps);
   }
 
   componentDidUpdate() {
@@ -39,6 +45,12 @@ class Line extends Component {
   pointEnter(point) {
     if (this.props.pointMouseEnter) {
       this.props.pointMouseEnter(point);
+    }
+  }
+
+  pointOut(point) {
+    if (this.props.pointMouseOut) {
+      this.props.pointMouseOut(point);
     }
   }
 
@@ -98,6 +110,7 @@ class Line extends Component {
                 key={index}
                 className="plot"
                 onMouseEnter={() => this.pointEnter(point)}
+                onMouseOut={() => this.pointOut(point)}
               >
               </circle>
             )
