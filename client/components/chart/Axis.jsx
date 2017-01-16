@@ -13,8 +13,11 @@ class Axis extends Component {
     ticks: PropTypes.oneOfType([PropTypes.object, PropTypes.number]),
     tickFormat: PropTypes.func,
     position: PropTypes.object,
+    padding: PropTypes.object,
     tickPadding: PropTypes.number,
-    duration: PropTypes.number
+    duration: PropTypes.number,
+    displayGrid: PropTypes.bool,
+    outerTickSize: PropTypes.number
   }
 
   static defaultProps = {
@@ -25,7 +28,10 @@ class Axis extends Component {
     ticks: null,
     position: {top: 0, right: 0, bottom: 0, left: 0},
     tickPadding: 0,
-    duration: 0
+    duration: 0,
+    displayGrid: false,
+    outerTickSize: 0,
+    padding: {top: 0, right: 0, bottom: 0, left: 0}
   }
 
   shouldComponentUpdate(nextProps) {
@@ -41,22 +47,36 @@ class Axis extends Component {
   }
 
   renderAxis() {
-    const { className, orient, scale, ticks, 
-      tickFormat, tickPadding, duration, textRotate } = this.props;
+    const { className, orient, scale, ticks, outerTickSize, width, height,
+      tickFormat, tickPadding, duration, textRotate, displayGrid, position, padding } = this.props;
     let axis = d3.axisLeft(scale);
     switch(orient) {
       case 'top':
         axis = d3.axisTop(scale);
+        if (displayGrid) {
+          axis.tickSizeInner(height + padding.top + padding.bottom);
+        }
         break;
       case 'right':
         axis = d3.axisRight(scale);
+        if (displayGrid) {
+          axis.tickSizeInner(width - padding.left - padding.right);
+        }
         break;
       case 'bottom':
         axis = d3.axisBottom(scale);
+        if (displayGrid) {
+          axis.tickSizeInner(-height + padding.top + padding.bottom);
+        }
         break;
       default:
+        if (displayGrid) {
+          axis.tickSizeInner(-width + padding.left + padding.right);
+        }
         break;
     }
+
+    axis.tickSizeOuter(outerTickSize);
 
     if (ticks) {
       axis.ticks(ticks);

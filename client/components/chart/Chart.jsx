@@ -26,8 +26,8 @@ class Chart extends Component {
           return child;
         }
         const clonedProps = {
-          width,
-          height
+          width: child.props.width || width,
+          height: child.props.height || height
         };
         return React.cloneElement(child, clonedProps);
       } else {

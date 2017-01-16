@@ -21,7 +21,9 @@ class AreaLineChart extends Component {
     width: PropTypes.number,
     height: PropTypes.number,
     responsive: PropTypes.bool,
-    className: PropTypes.string
+    className: PropTypes.string,
+    yTicks: PropTypes.number,
+    padding: PropTypes.object
   }
 
   static defaultProps = {
@@ -35,9 +37,10 @@ class AreaLineChart extends Component {
     data: {},
     width: 500,
     height: 300,
-    padding: {top: 30, right: 30, bottom: 30, left: 30},
+    padding: {top: 30, right: 30, bottom: 30, left: 60},
     responsive: false,
-    className: ''
+    className: '',
+    yTicks: 5
   }
 
   state = {
@@ -113,37 +116,56 @@ class AreaLineChart extends Component {
     const xAxisColumnsInArray = Object.keys(xAxisColumns);
     let xScale;
     if (xScaleType === this.scaleTypes.TIME) {
-      xScale = d3.scaleTime().range([1, xaxisWidth]);
-      xScale.domain(d3.extent(xAxisColumnsInArray, (d) => moment(d, xAxisFormat)));
+      xScale = d3.scaleTime()
+        .domain(d3.extent(xAxisColumnsInArray, (d) => moment(d, xAxisFormat)))
+        .range([0, xaxisWidth]);
     }
     if (xScaleType === this.scaleTypes.BAND) {
-      xScale = d3.scaleBand().range([1, xaxisWidth])
-      xScale.domain(xAxisColumnsInArray);
+      xScale = d3.scaleBand()
+        .domain(xAxisColumnsInArray)
+        .range([0, xaxisWidth]);
     }
 
     return xScale;
   }
 
-  getYScale(labels, data, yProp, axisHeight) {
+  getYScale(labels, data, yProp, axisHeight, yTicks, isAddWhiteSpace) {
     const maxOfEachLabels = [];
     const actualLabels = labels.length ? labels : Object.keys(data);
     for (const item of actualLabels) {
       maxOfEachLabels.push(d3.max(data[item], (d) => d[yProp]));
     }
     const max = d3.max(maxOfEachLabels);
-    const yScale = d3.scaleLinear().range([axisHeight, 0]);
-    yScale.domain([0, max]);
+    const yScale = d3.scaleLinear()
+      .domain([0, max])
+      .range([axisHeight, 0]);
     
-    return yScale;
+    if (!isAddWhiteSpace) {
+      return yScale;
+    }
+
+    const ticksValues = yScale.ticks(yTicks);
+    let domainValueRange = 0;
+    if (ticksValues.length) {
+      domainValueRange =  ticksValues[ticksValues.length - 1] - 
+        (ticksValues.length > 1 ? ticksValues[ticksValues.length - 2] : 0);
+    }
+    const whiteSpaceScale = d3.scaleLinear().range([axisHeight, 0]);
+    whiteSpaceScale.domain([0, max + domainValueRange]);
+    return whiteSpaceScale;
   }
 
   chartData() {
-    const { padding, data, xScaleType, xAxisProp, yLeftAxisLabelProp, yRightAxisLabelProp, labels, xAxisFormat } = this.props;
+    const { padding, data, xScaleType, xAxisProp, yLeftAxisLabelProp,
+      yRightAxisLabelProp, labels, xAxisFormat, yTicks } = this.props;
     const { width, height } = this.state;
 
     const xScale = this.getXScale();
-    const yScale = this.getYScale(labels, data, yLeftAxisLabelProp, height);
-    const yRightScale = this.getYScale(labels, data, yRightAxisLabelProp, height);
+    const yScale = this.getYScale(labels, data, yLeftAxisLabelProp,  height, yTicks, true);
+    const yRightScale = this.getYScale(labels, data, yRightAxisLabelProp, height, yTicks);
+    const contentScale = this.getYScale(labels, data, yLeftAxisLabelProp,  height, yTicks, true);
+    const contentRightScale = this.getYScale(labels, data, yRightAxisLabelProp, height, yTicks, true);
+
     const drawData = [];
     const actualLabels = labels.length ? labels : Object.keys(data);
     for (const label of actualLabels) {
@@ -151,7 +173,7 @@ class AreaLineChart extends Component {
       const rightLinePoints = item.map((item) => ({
         x: xScale(xScaleType === this.scaleTypes.TIME ? moment(item[xAxisProp], xAxisFormat)
           : item[xAxisProp]), 
-        y: yRightScale(item[yRightAxisLabelProp]),
+        y: contentRightScale(item[yRightAxisLabelProp]),
         data: item
       }));
       drawData.push({
@@ -167,13 +189,13 @@ class AreaLineChart extends Component {
           : d[xAxisProp];
                     return xScale(dData);
                   })
-                  .y((d) => yRightScale(d[yRightAxisLabelProp]));
+                  .y((d) => contentRightScale(d[yRightAxisLabelProp]));
     const area = d3.area()
                   .curve(d3.curveCardinal)
                   .x((d) => xScale(xScaleType === this.scaleTypes.TIME ? moment(d[xAxisProp], xAxisFormat)
           : d[xAxisProp]))
                   .y0(height)
-                  .y1((d) => yScale(d[yLeftAxisLabelProp]));
+                  .y1((d) => contentScale(d[yLeftAxisLabelProp]));
 
     return {
       width: this.getChartWidth(),
@@ -202,7 +224,7 @@ class AreaLineChart extends Component {
 
   render() {
     const { width, height, yScale, xScale, yRightScale, line, area, linePoints, drawData } = this.chartData();
-    const { padding, data, className } = this.props;
+    const { padding, data, className, yTicks } = this.props;
     const { tooltipMousePos, tooltipDisplay } = this.state;
     const bottomAxisPosition = {
       top: 0,
@@ -229,15 +251,22 @@ class AreaLineChart extends Component {
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
-          <Axis orient='left' scale={yScale} duration={500} />
-          <Axis orient='right' scale={yRightScale} position={rightAxisPosition} duration={500} />
+          <Axis
+            orient='left'
+            scale={yScale}
+            duration={500}
+            displayGrid={true}
+            padding={padding}
+          />
+          <Axis ticks={yTicks} orient='right' scale={yRightScale} position={rightAxisPosition} duration={500} />
           <Axis
             orient='bottom'
             scale={xScale}
+            displayGrid={true}
             position={bottomAxisPosition}
-            tickPadding={5}
-            ticks={0}
+            tickPadding={20}
             duration={500}
+            padding={padding}
           />
           {
             drawData.map((item, index) => {
@@ -274,7 +303,7 @@ class AreaLineChart extends Component {
           }}
           mousePadding={{
             top: -25,
-            right: -30
+            right: -60
           }}
           visible={tooltipDisplay}
         >
